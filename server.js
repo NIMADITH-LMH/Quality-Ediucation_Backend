@@ -1,6 +1,12 @@
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import connectDB from './Config/db.js';
+
+// Import Routes
+import authRouter from './Routes/authRouter.js';
+
+dotenv.config();
 
 const app = express();
 
@@ -14,9 +20,15 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to AF Backend API' });
 });
 
+
+app.use('/api/auth', authRouter);
+
 // Port
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+// Connect to MongoDB and start server
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
 });

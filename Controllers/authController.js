@@ -2,6 +2,8 @@
 
 import User from "../models/UserModel.js";
 
+import { hashPassword } from "../utils/passwordUtils.js";
+import { StatusCodes } from "http-status-codes";
 
 export const register = async (req, res) => {
   const isFirstAccount = (await User.countDocuments()) === 0;
