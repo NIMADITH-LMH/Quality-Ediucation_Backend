@@ -1,5 +1,3 @@
-
-
 import User from "../models/UserModel.js";
 
 import { hashPassword } from "../utils/passwordUtils.js";
