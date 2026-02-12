@@ -1,1 +1,1 @@
-# Quality-Ediucation
+# Quality-Education
