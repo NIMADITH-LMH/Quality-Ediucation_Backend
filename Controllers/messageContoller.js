@@ -52,4 +52,68 @@ export const getAllMessages = async (req, res) => {
   }
 };
 
+// Update message - only the user who created it can update
+export const updateMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the message first to check ownership
+    const message = await Message.findById(id);
+
+    if (!message) {
+      throw new NotFoundError("Message not found");
+    }
+
+    // Check if the logged-in user is the creator of the message
+    if (message.createdBy.toString() !== req.user.userId) {
+      throw new BadRequestError("You are not authorized to update this message");
+    }
+
+    const updatedMessage = await Message.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+
+    res.status(StatusCodes.OK).json({
+      msg: "Message updated successfully",
+      message: updatedMessage,
+    });
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      msg: "Failed to update message",
+      error: error.message,
+    });
+  }
+};
+
+// Delete message - only the user who created it can delete
+export const deleteMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find the message first to check ownership
+    const message = await Message.findById(id);
+
+    if (!message) {
+      throw new NotFoundError("Message not found");
+    }
+
+    // Check if the logged-in user is the creator of the message
+    if (message.createdBy.toString() !== req.user.userId) {
+      throw new BadRequestError("You are not authorized to delete this message");
+    }
+
+    await Message.findByIdAndDelete(id);
+
+    res.status(StatusCodes.OK).json({ msg: "Message deleted successfully" });
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      msg: "Failed to delete message",
+      error: error.message,
+    });
+  }
+};
+
+
+
 
