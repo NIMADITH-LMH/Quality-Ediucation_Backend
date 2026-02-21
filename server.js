@@ -8,6 +8,8 @@ import cookieParser from "cookie-parser";
 import authRouter from "./Routes/authRouter.js";
 import feedbackRouter from "./Routes/feedbackRouter.js";
 import progressRouter from "./Routes/progressRouter.js";
+// import messageRouter from './Routes/messageRouter.js'; // Future routes from main
+// import tutoringSessionRouter from './Routes/tutoringSessionRouter.js'; // Future routes from main
 
 dotenv.config();
 

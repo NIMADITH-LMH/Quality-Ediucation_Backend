@@ -1,10 +1,12 @@
 import User from "../models/UserModel.js";
+import { UnauthenticatedError, UnauthorizedError } from "../errors/customErrors.js";
 import { verifyJWT } from "../utils/generateToken.js";
 
-// ─── Strategy 1: Bearer-token middleware (Authorization header) ───────────────
-// Used by routes that need the full user document on req.user
-// e.g.  Authorization: Bearer <token>
-
+/**
+ * Reads JWT from:
+ * Authorization: Bearer <token>
+ * Attaches req.user (Full User Document)
+ */
 export const protect = async (req, res, next) => {
   try {
     const auth = req.headers.authorization || "";
@@ -20,61 +22,46 @@ export const protect = async (req, res, next) => {
     const userId = decoded?.id || decoded?.userId || decoded?._id;
 
     if (!userId) {
-      return res
-        .status(401)
-        .json({ message: "Not authorized, invalid token payload" });
+      return res.status(401).json({ message: "Not authorized, invalid token payload" });
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res
-        .status(401)
-        .json({ message: "Not authorized, user not found" });
+      return res.status(401).json({ message: "Not authorized, user not found" });
     }
 
     req.user = user;
     next();
   } catch (err) {
-    return res
-      .status(401)
-      .json({ message: "Not authorized, token failed" });
+    return res.status(401).json({ message: "Not authorized, token failed" });
   }
 };
 
-// ─── Strategy 2: Cookie-based middleware ─────────────────────────────────────
-// Used by routes that rely on httpOnly cookie auth
-// Attaches { userId, role } to req.user
-
+/**
+ * Reads JWT from:
+ * cookie (token)
+ * Attaches req.user { userId, role }
+ */
 export const authenticateUser = (req, res, next) => {
-  // Support both cookie and Authorization Bearer header
-  let token = req.cookies?.token;
-
-  if (!token) {
-    const auth = req.headers.authorization || "";
-    token = auth.startsWith("Bearer ") ? auth.split(" ")[1] : null;
-  }
-
-  if (!token) {
-    return res.status(401).json({ message: "Authentication invalid" });
-  }
+  const { token } = req.cookies;
+  if (!token) throw new UnauthenticatedError("authentication Invalid");
 
   try {
-    const { userId, role, id } = verifyJWT(token);
+    const { userId, id, role } = verifyJWT(token);
     req.user = { userId: userId || id, role };
     next();
   } catch (error) {
-    return res.status(401).json({ message: "Authentication invalid" });
+    throw new UnauthenticatedError("authentication Invalid");
   }
 };
 
-// ─── Role-based authorization ─────────────────────────────────────────────────
-
+/**
+ * Authorization guard for specific roles
+ */
 export const authorizePermissions = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
-      return res
-        .status(403)
-        .json({ message: "Not authorized to access this route" });
+      throw new UnauthorizedError("not authorized to access this route");
     }
     next();
   };

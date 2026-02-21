@@ -3,18 +3,22 @@ import bcrypt from "bcryptjs";
 import { createJWT } from "../utils/generateToken.js";
 import { hashPassword } from "../utils/passwordUtils.js";
 import { StatusCodes } from "http-status-codes";
+import {
+  UnauthenticatedError,
+  NotFoundError,
+  BadRequestError,
+} from "../errors/customErrors.js";
 
-// ─── Register ────────────────────────────────────────────────────────────────
-
+// Register a new user or tutor
 export const register = async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
-    return res.status(400).json({ msg: "Email and password are required" });
+    throw new BadRequestError("Email and password are required");
   }
 
   const isFirstAccount = (await User.countDocuments()) === 0;
 
-  // If role is provided and is "tutor", keep it; otherwise apply default logic
+  // Apply role logic: check if explicitly requested or default based on account number
   if (req.body.role === "tutor") {
     req.body.role = "tutor";
   } else {
@@ -25,19 +29,15 @@ export const register = async (req, res) => {
   req.body.password = hashedPassword;
 
   const user = await User.create(req.body);
-  const message =
-    user.role === "tutor"
-      ? "Tutor registered successfully"
-      : "User Created Successfully";
+  const message = user.role === "tutor" ? "Tutor registered successfully" : "User Created Successfully";
   res.status(StatusCodes.CREATED).json({ msg: message });
 };
 
-// ─── Login ────────────────────────────────────────────────────────────────────
-
+// Login user/tutor and set JWT token in cookie
 export const login = async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
-    return res.status(400).json({ msg: "Email and password are required" });
+    throw new BadRequestError("Email and password are required");
   }
 
   // Optionally filter by role if provided in request
@@ -47,20 +47,14 @@ export const login = async (req, res) => {
   }
 
   const user = await User.findOne(query);
+  const isValidUser =
+    user && (await bcrypt.compare(password, user.password));
 
-  if (!user) {
-    return res.status(401).json({ msg: "Invalid credentials" });
-  }
-
-  const isPasswordCorrect = await bcrypt.compare(password, user.password);
-
-  if (!isPasswordCorrect) {
-    return res.status(401).json({ msg: "Invalid credentials" });
-  }
+  if (!isValidUser) throw new UnauthenticatedError("Invalid credentials");
 
   const oneday = 24 * 60 * 60 * 1000;
 
-  // Issue token — supports both Authorization header (Bearer) and cookie flows
+  // token includes id/userId for compatibility with both middleware variants
   const token = createJWT({ userId: user._id, role: user.role, id: user._id });
 
   res.cookie("token", token, {
@@ -72,16 +66,14 @@ export const login = async (req, res) => {
   const roleMessage = user.role === "tutor" ? "Tutor logged in" : "User logged in";
   res.status(StatusCodes.OK).json({
     msg: roleMessage,
-    token,
+    token, // Include token in body for Bearer-token clients (havindu)
     user: {
       role: user.role,
-      name: user.fullName,
+      name: user.fullName || user.email,
       email: user.email,
     },
   });
 };
-
-// ─── Logout ───────────────────────────────────────────────────────────────────
 
 export const logout = (req, res) => {
   res.cookie("token", "logout", {
