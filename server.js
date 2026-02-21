@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import authRouter from "./Routes/authRouter.js";
 import feedbackRouter from "./Routes/feedbackRouter.js";
 import progressRouter from "./Routes/progressRouter.js";
+import materialRouter from "./Routes/materialRouter.js";
 
 // If you have these route files, uncomment the imports + app.use lines below
 import messageRouter from "./Routes/messageRouter.js";
@@ -30,6 +31,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/feedbacks", feedbackRouter);
 app.use("/api/progress", progressRouter);
+app.use("/api/materials", materialRouter);
 
 // Uncomment if these exist
 app.use("/api/messages", messageRouter);
