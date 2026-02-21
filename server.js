@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./Config/db.js";
+import cookieParser from "cookie-parser";
 
 // Import Routes
 import authRouter from "./Routes/authRouter.js";
@@ -16,6 +17,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Routes
 app.get("/", (req, res) => {
