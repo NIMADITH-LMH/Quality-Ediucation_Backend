@@ -194,7 +194,19 @@ export const createTutoringSession = async (req, res) => {
 /**
  * Get all tutoring sessions
  * Returns upcoming sessions by default
- * Supports pagination, filtering, and sorting
+ * Supports pagination, filtering by subject/grade/level, and sorting
+ * Query parameters:
+ *   - page, limit: pagination
+ *   - subject: filter by subject (supports partial match, case-insensitive)
+ *   - grade or level: filter by difficulty level (beginner, intermediate, advanced)
+ *   - tag: filter by tags
+ *   - locationType: filter by location type (online, offline, hybrid)
+ *   - availableSeatsOnly: show only sessions with available seats
+ *   - tutor: filter by tutor ID
+ *   - status: filter by status
+ *   - includeCompleted: include past sessions
+ *   - sortBy: field to sort by
+ *   - sortOrder: asc or desc
  */
 export const getAllTutoringSessions = async (req, res) => {
   try {
@@ -204,7 +216,11 @@ export const getAllTutoringSessions = async (req, res) => {
       status = "scheduled",
       tutor,
       subject,
+      grade,
       level,
+      tag,
+      locationType,
+      availableSeatsOnly = false,
       includeCompleted = false,
       sortBy = "schedule.date",
       sortOrder = "asc",
@@ -244,14 +260,85 @@ export const getAllTutoringSessions = async (req, res) => {
       filter.tutor = tutor;
     }
 
-    // Filter by subject (case-insensitive)
+    /**
+     * Enhanced Subject Filtering
+     * - Supports case-insensitive partial matching
+     * - Can filter by exact subject name
+     */
     if (subject) {
-      filter.subject = { $regex: subject, $options: "i" };
+      // Support multiple subjects separated by comma
+      const subjects = subject.split(",").map((s) => s.trim());
+
+      if (subjects.length === 1) {
+        // Single subject: case-insensitive regex match
+        filter.subject = { $regex: subjects[0], $options: "i" };
+      } else {
+        // Multiple subjects: match any of them
+        filter.subject = {
+          $in: subjects.map((s) => new RegExp(s, "i")),
+        };
+      }
     }
 
-    // Filter by level if provided
-    if (level && ["beginner", "intermediate", "advanced"].includes(level)) {
-      filter.level = level;
+    /**
+     * Enhanced Grade/Level Filtering
+     * - Support both 'grade' and 'level' query parameters
+     * - 'grade' parameter is an alias for 'level'
+     * - Supports multiple levels separated by comma
+     */
+    const levelParam = level || grade;
+    if (levelParam) {
+      const validLevels = ["beginner", "intermediate", "advanced"];
+
+      // Support multiple levels separated by comma
+      const levels = levelParam
+        .split(",")
+        .map((l) => l.trim().toLowerCase())
+        .filter((l) => validLevels.includes(l));
+
+      if (levels.length === 1) {
+        filter.level = levels[0];
+      } else if (levels.length > 1) {
+        filter.level = { $in: levels };
+      }
+    }
+
+    /**
+     * Filter by tags
+     * - Supports partial tag matching
+     * - Case-insensitive
+     */
+    if (tag) {
+      const tags = tag.split(",").map((t) => t.trim().toLowerCase());
+
+      if (tags.length === 1) {
+        filter.tags = { $regex: tags[0], $options: "i" };
+      } else {
+        // Match sessions with any of the specified tags
+        filter.tags = {
+          $in: tags.map((t) => new RegExp(t, "i")),
+        };
+      }
+    }
+
+    /**
+     * Filter by location type
+     * - online, offline, or hybrid
+     */
+    if (locationType) {
+      const validLocations = ["online", "offline", "hybrid"];
+      if (validLocations.includes(locationType.toLowerCase())) {
+        filter["location.type"] = locationType.toLowerCase();
+      }
+    }
+
+    /**
+     * Show only sessions with available seats
+     */
+    if (availableSeatsOnly === "true" || availableSeatsOnly === true) {
+      filter.$expr = {
+        $lt: ["$capacity.currentEnrolled", "$capacity.maxParticipants"],
+      };
     }
 
     // Validate sortBy parameter
@@ -261,6 +348,7 @@ export const getAllTutoringSessions = async (req, res) => {
       "level",
       "createdAt",
       "capacity.maxParticipants",
+      "capacity.currentEnrolled",
       "-schedule.date",
     ];
 
@@ -291,6 +379,16 @@ export const getAllTutoringSessions = async (req, res) => {
       .limit(limitNum)
       .lean(); // Use lean() for better performance on read-only queries
 
+    // Enrich sessions with additional metadata
+    const enrichedSessions = sessions.map((session) => ({
+      ...session,
+      availableSeats: session.capacity.maxParticipants - session.capacity.currentEnrolled,
+      isFull: session.capacity.currentEnrolled >= session.capacity.maxParticipants,
+      enrollmentPercentage: Math.round(
+        (session.capacity.currentEnrolled / session.capacity.maxParticipants) * 100
+      ),
+    }));
+
     // Calculate pagination metadata
     const totalPages = Math.ceil(totalSessions / limitNum);
     const hasNextPage = pageNum < totalPages;
@@ -298,7 +396,7 @@ export const getAllTutoringSessions = async (req, res) => {
 
     res.status(StatusCodes.OK).json({
       msg: "Tutoring sessions retrieved successfully",
-      sessions,
+      sessions: enrichedSessions,
       pagination: {
         currentPage: pageNum,
         totalPages,
