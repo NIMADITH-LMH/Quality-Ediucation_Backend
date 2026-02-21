@@ -11,51 +11,52 @@ import {
 
 // Register a new user or tutor
 export const register = async (req, res) => {
-  const { email, password } = req.body || {};
+  const { email, password, role } = req.body || {};
   if (!email || !password) {
     throw new BadRequestError("Email and password are required");
   }
 
   const isFirstAccount = (await User.countDocuments()) === 0;
 
-  // Apply role logic: check if explicitly requested or default based on account number
-  if (req.body.role === "tutor") {
+  // If role is provided and is "tutor", use it; otherwise apply default logic
+  if (role === "tutor") {
     req.body.role = "tutor";
   } else {
     req.body.role = isFirstAccount ? "admin" : "user";
   }
 
-  const hashedPassword = await hashPassword(req.body.password);
+  const hashedPassword = await hashPassword(password);
   req.body.password = hashedPassword;
 
   const user = await User.create(req.body);
-  const message = user.role === "tutor" ? "Tutor registered successfully" : "User Created Successfully";
+
+  const message =
+    user.role === "tutor"
+      ? "Tutor registered successfully"
+      : "User Created Successfully";
+
   res.status(StatusCodes.CREATED).json({ msg: message });
 };
 
 // Login user/tutor and set JWT token in cookie
 export const login = async (req, res) => {
-  const { email, password } = req.body || {};
+  const { email, password, role } = req.body || {};
   if (!email || !password) {
     throw new BadRequestError("Email and password are required");
   }
 
   // Optionally filter by role if provided in request
   const query = { email };
-  if (req.body.role) {
-    query.role = req.body.role;
-  }
+  if (role) query.role = role;
 
   const user = await User.findOne(query);
-  const isValidUser =
-    user && (await bcrypt.compare(password, user.password));
-
+  const isValidUser = user && (await bcrypt.compare(password, user.password));
   if (!isValidUser) throw new UnauthenticatedError("Invalid credentials");
 
   const oneday = 24 * 60 * 60 * 1000;
 
-  // token includes id/userId for compatibility with both middleware variants
-  const token = createJWT({ userId: user._id, role: user.role, id: user._id });
+  // Keep both keys if you have middleware expecting either `id` or `userId`
+  const token = createJWT({ userId: user._id, id: user._id, role: user.role });
 
   res.cookie("token", token, {
     httpOnly: true,
@@ -64,9 +65,10 @@ export const login = async (req, res) => {
   });
 
   const roleMessage = user.role === "tutor" ? "Tutor logged in" : "User logged in";
+
   res.status(StatusCodes.OK).json({
     msg: roleMessage,
-    token, // Include token in body for Bearer-token clients (havindu)
+    token, // remove this if you ONLY want cookie-based auth
     user: {
       role: user.role,
       name: user.fullName || user.email,
