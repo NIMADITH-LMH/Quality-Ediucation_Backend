@@ -501,3 +501,61 @@ export const getMyEnrolledSessions = async (req, res) => {
     throw error;
   }
 };
+
+/**
+ * Get a single tutoring session by ID
+ * Retrieves detailed information about a specific session
+ */
+export const getTutoringSessionById = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    // Validate ID format
+    if (!sessionId || !sessionId.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new BadRequestError("Invalid session ID format");
+    }
+
+    // Find session and populate references
+    const session = await TutoringSession.findById(sessionId)
+      .populate("tutor", "fullName email phoneNumber avatar location role")
+      .populate("participants.userId", "fullName email avatar");
+
+    // Check if session exists
+    if (!session) {
+      throw new NotFoundError("Tutoring session not found");
+    }
+
+    // Calculate additional metadata
+    const now = new Date();
+    const sessionMetadata = {
+      isPast: session.schedule.date < now,
+      isUpcoming: session.schedule.date >= now,
+      availableSeats: session.capacity.maxParticipants - session.capacity.currentEnrolled,
+      enrollmentPercentage: Math.round(
+        (session.capacity.currentEnrolled / session.capacity.maxParticipants) * 100
+      ),
+      averageRating:
+        session.participants.length > 0
+          ? (
+              session.participants.reduce((sum, p) => sum + (p.rating || 0), 0) /
+              session.participants.filter((p) => p.rating).length
+            ).toFixed(1)
+          : null,
+      totalFeedbackCount: session.participants.filter((p) => p.feedbackGiven).length,
+    };
+
+    res.status(StatusCodes.OK).json({
+      msg: "Tutoring session retrieved successfully",
+      session: {
+        ...session.toObject(),
+        metadata: sessionMetadata,
+      },
+    });
+  } catch (error) {
+    if (error.name === "CastError") {
+      throw new BadRequestError("Invalid session ID format");
+    }
+
+    throw error;
+  }
+};
