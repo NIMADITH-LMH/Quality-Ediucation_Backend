@@ -1,10 +1,12 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import connectDB from './Config/db.js';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import connectDB from "./Config/db.js";
 
 // Import Routes
-import authRouter from './Routes/authRouter.js';
+import authRouter from "./Routes/authRouter.js";
+import feedbackRouter from "./Routes/feedbackRouter.js";
+import progressRouter from "./Routes/progressRouter.js";
 
 dotenv.config();
 
@@ -16,12 +18,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to AF Backend API' });
+app.get("/", (req, res) => {
+  res.json({ message: "Welcome to AF Backend API" });
 });
 
-
-app.use('/api/auth', authRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/feedbacks", feedbackRouter);
+app.use("/api/progress", progressRouter);
 
 // Port
 const PORT = process.env.PORT || 5000;
