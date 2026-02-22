@@ -119,3 +119,52 @@ export const leaveTutoringSession = async (req, res) => {
     throw new BadRequestError(err.message);
   }
 };
+
+// Update tutoring session (tutor or admin only)
+export const updateTutoringSession = async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestError("Invalid session id");
+  if (!req.user) throw new UnauthorizedError("Authentication required");
+
+  const session = await TutoringSession.findById(id);
+  if (!session) return res.status(StatusCodes.NOT_FOUND).json({ msg: "Session not found" });
+
+  const isTutor = String(session.tutor) === String(req.user.userId);
+  const isAdmin = req.user.role === "admin";
+  if (!(isTutor || isAdmin)) throw new UnauthorizedError("Not authorized to update this session");
+
+  const allowed = ["subject", "description", "topic", "schedule", "location", "level", "tags", "notes", "status"];
+  const updates = {};
+
+  allowed.forEach(key => {
+    if (key in req.body) updates[key] = req.body[key];
+  });
+
+  if (updates.schedule?.startTime || updates.schedule?.endTime) {
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(updates.schedule.startTime) || !timeRegex.test(updates.schedule.endTime)) 
+      throw new BadRequestError("Time must be in HH:MM format");
+  }
+
+  const updated = await TutoringSession.findByIdAndUpdate(id, updates, { new: true, runValidators: true })
+    .populate("tutor", "fullName email role");
+
+  return res.status(StatusCodes.OK).json({ msg: "Session updated", session: updated });
+};
+
+// Delete tutoring session (tutor who created it or admin only)
+export const deleteTutoringSession = async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestError("Invalid session id");
+  if (!req.user) throw new UnauthorizedError("Authentication required");
+
+  const session = await TutoringSession.findById(id);
+  if (!session) return res.status(StatusCodes.NOT_FOUND).json({ msg: "Session not found" });
+
+  const isTutor = String(session.tutor) === String(req.user.userId);
+  const isAdmin = req.user.role === "admin";
+  if (!(isTutor || isAdmin)) throw new UnauthorizedError("Not authorized to delete this session");
+
+  await TutoringSession.findByIdAndDelete(id);
+  return res.status(StatusCodes.OK).json({ msg: "Session deleted successfully" });
+};
