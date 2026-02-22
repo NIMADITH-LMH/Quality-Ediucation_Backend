@@ -102,3 +102,20 @@ export const joinTutoringSession = async (req, res) => {
     throw new BadRequestError(err.message);
   }
 };
+
+// Leave a tutoring session (authenticated users)
+export const leaveTutoringSession = async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestError("Invalid session id");
+  if (!req.user) throw new UnauthorizedError("Authentication required");
+
+  const session = await TutoringSession.findById(id);
+  if (!session) return res.status(StatusCodes.NOT_FOUND).json({ msg: "Session not found" });
+
+  try {
+    await session.removeParticipant(req.user.userId);
+    return res.status(StatusCodes.OK).json({ msg: "Left session", currentEnrolled: session.capacity.currentEnrolled });
+  } catch (err) {
+    throw new BadRequestError(err.message);
+  }
+};
