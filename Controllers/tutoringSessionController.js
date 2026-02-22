@@ -657,3 +657,69 @@ export const getTutoringSessionById = async (req, res) => {
     throw error;
   }
 };
+
+/**
+ * Join a tutoring session
+ * - Authenticated users only (use authenticateUser middleware)
+ * - Prevent duplicate joins
+ * - Enforce max capacity
+ */
+export const joinTutoringSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const userId = req.user.userId;
+
+    if (!sessionId || !sessionId.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new BadRequestError("Invalid session ID format");
+    }
+
+    const session = await TutoringSession.findById(sessionId);
+    if (!session) {
+      throw new NotFoundError("Tutoring session not found");
+    }
+
+    // Only allow joining scheduled future sessions
+    const now = new Date();
+    if (session.status !== "scheduled" || session.schedule.date <= now) {
+      throw new BadRequestError("Cannot join this session");
+    }
+
+    // Prevent duplicate joins
+    const already = session.participants.some(
+      (p) => p.userId.toString() === userId.toString()
+    );
+    if (already) {
+      throw new BadRequestError("User already joined this session");
+    }
+
+    // Enforce capacity
+    if (session.capacity.currentEnrolled >= session.capacity.maxParticipants) {
+      throw new BadRequestError("Session is at full capacity");
+    }
+
+    // Use model helper to add participant (updates currentEnrolled)
+    await session.addParticipant(userId);
+
+    // Re-fetch populated session for response
+    const updated = await TutoringSession.findById(sessionId)
+      .populate("tutor", "fullName email phoneNumber avatar")
+      .populate("participants.userId", "fullName email avatar");
+
+    res.status(StatusCodes.OK).json({
+      msg: "Successfully joined the tutoring session",
+      session: updated,
+    });
+  } catch (error) {
+    if (error.name === "CastError") {
+      throw new BadRequestError("Invalid session ID format");
+    }
+    if (error.name === "ValidationError") {
+      const errorMessages = Object.values(error.errors)
+        .map((e) => e.message)
+        .join(", ");
+      throw new BadRequestError(errorMessages);
+    }
+
+    throw error;
+  }
+};
