@@ -1,6 +1,7 @@
 import TutoringSession from "../models/TutoringSessionModel.js";
 import { StatusCodes } from "http-status-codes";
-import { BadRequestError } from "../errors/customErrors.js";
+import { BadRequestError, UnauthorizedError } from "../errors/customErrors.js";
+import mongoose from "mongoose";
 
 // Create tutoring session - accessible to tutor/admin (router already enforces RBAC)
 export const createTutoringSession = async (req, res) => {
@@ -38,10 +39,7 @@ export const createTutoringSession = async (req, res) => {
   return res.status(StatusCodes.CREATED).json({ msg: "Tutoring session created", session });
 };
 
-/**
- * Fetch tutoring sessions (upcoming by default) with pagination.
- * Defaults to sessions whose schedule.date >= now.
- */
+// Get all tutoring sessions
 export const getAllTutoringSessions = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -85,5 +83,22 @@ export const getAllTutoringSessions = async (req, res) => {
   } catch (err) {
     if (err.message && err.message.includes("Cast to")) throw new BadRequestError("Invalid query parameter");
     throw err;
+  }
+};
+
+// Join a tutoring session (authenticated users)
+export const joinTutoringSession = async (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new BadRequestError("Invalid session id");
+  if (!req.user) throw new UnauthorizedError("Authentication required");
+
+  const session = await TutoringSession.findById(id);
+  if (!session) return res.status(StatusCodes.NOT_FOUND).json({ msg: "Session not found" });
+
+  try {
+    await session.addParticipant(req.user.userId);
+    return res.status(StatusCodes.OK).json({ msg: "Joined session", currentEnrolled: session.capacity.currentEnrolled });
+  } catch (err) {
+    throw new BadRequestError(err.message);
   }
 };
