@@ -13,24 +13,133 @@ export const createTutoringSession = async (req, res) => {
   if (!["tutor", "admin"].includes(req.user.role)) {
     throw new UnauthorizedError("Only tutors and admins can create sessions");
   }
+};
 
-  const {
-    subject,
-    description,
-    topic,
-    schedule,
-    location,
-    capacity,
-    level,
-    tags,
-    isRecurring,
-    recurrencePattern,
-    notes,
-  } = req.body;
+/**
+ * Get all tutoring sessions
+ * Returns upcoming sessions by default
+ * Supports pagination, filtering, and sorting
+ */
+export const getAllTutoringSessions = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status = "scheduled",
+      tutor,
+      subject,
+      level,
+      includeCompleted = false,
+      sortBy = "schedule.date",
+      sortOrder = "asc",
+    } = req.query;
 
-  // Validate required fields
-  if (!subject || !description || !schedule) {
-    throw new BadRequestError("Subject, description, and schedule are required");
+    // Validate pagination parameters
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10)); // Max 100 per page
+
+    // Skip validation
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build filter query
+    const filter = {};
+
+    // Default: return only upcoming/scheduled sessions
+    if (includeCompleted === "false" || includeCompleted === false) {
+      const now = new Date();
+
+      // Filter for sessions that are scheduled and date is in future
+      filter.$and = [
+        { "schedule.date": { $gte: now } },
+        { status: "scheduled" },
+      ];
+    } else if (String(includeCompleted).toLowerCase() === "true") {
+      // Include all sessions (past and future)
+      filter.$or = [
+        { status: { $in: ["scheduled", "in-progress", "completed"] } },
+      ];
+    } else if (status && status !== "all") {
+      // Filter by specific status if provided
+      filter.status = status;
+    }
+
+    // Filter by tutor if provided
+    if (tutor) {
+      filter.tutor = tutor;
+    }
+
+    // Filter by subject (case-insensitive)
+    if (subject) {
+      filter.subject = { $regex: subject, $options: "i" };
+    }
+
+    // Filter by level if provided
+    if (level && ["beginner", "intermediate", "advanced"].includes(level)) {
+      filter.level = level;
+    }
+
+    // Validate sortBy parameter
+    const validSortFields = [
+      "schedule.date",
+      "subject",
+      "level",
+      "createdAt",
+      "capacity.maxParticipants",
+      "-schedule.date",
+    ];
+
+    let sortField = "schedule.date";
+    let order = 1; // 1 for ascending, -1 for descending
+
+    if (sortBy && validSortFields.includes(sortBy)) {
+      sortField = sortBy;
+    }
+
+    // Handle sort order
+    if (sortOrder === "desc" || sortOrder === "-1") {
+      order = -1;
+    } else if (sortOrder === "asc" || sortOrder === "1") {
+      order = 1;
+    }
+
+    const sortObj = { [sortField]: order };
+
+    // Execute query with pagination
+    const totalSessions = await TutoringSession.countDocuments(filter);
+
+    const sessions = await TutoringSession.find(filter)
+      .populate("tutor", "fullName email phoneNumber avatar")
+      .populate("participants.userId", "fullName email avatar")
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limitNum)
+      .lean(); // Use lean() for better performance on read-only queries
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalSessions / limitNum);
+    const hasNextPage = pageNum < totalPages;
+    const hasPrevPage = pageNum > 1;
+
+    res.status(StatusCodes.OK).json({
+      msg: "Tutoring sessions retrieved successfully",
+      sessions,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalSessions,
+        sessionsPerPage: limitNum,
+        hasNextPage,
+        hasPrevPage,
+        nextPage: hasNextPage ? pageNum + 1 : null,
+        prevPage: hasPrevPage ? pageNum - 1 : null,
+      },
+    });
+  } catch (error) {
+    if (error.message.includes("Cast to")) {
+      throw new BadRequestError("Invalid filter parameters");
+    }
+
+    throw error;
   }
 
   if (!schedule.date || !schedule.startTime || !schedule.endTime) {

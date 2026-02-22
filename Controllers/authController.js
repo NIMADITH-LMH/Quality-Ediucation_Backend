@@ -1,4 +1,6 @@
 import User from "../models/UserModel.js";
+import bcrypt from "bcryptjs";
+import { createJWT } from "../utils/generateToken.js";
 import { hashPassword } from "../utils/passwordUtils.js";
 import { StatusCodes } from "http-status-codes";
 import {
@@ -6,47 +8,56 @@ import {
   NotFoundError,
   BadRequestError,
 } from "../errors/customErrors.js";
-import bcrypt from "bcryptjs";
-import { createJWT } from "../utils/generateToken.js";
 
 // Register a new user or tutor
-
 export const register = async (req, res) => {
+  const { email, password, role } = req.body || {};
+  if (!email || !password) {
+    throw new BadRequestError("Email and password are required");
+  }
+
   const isFirstAccount = (await User.countDocuments()) === 0;
-  
+
   // If role is provided and is "tutor", use it; otherwise apply default logic
-  if (req.body.role === "tutor") {
+  if (role === "tutor") {
     req.body.role = "tutor";
   } else {
     req.body.role = isFirstAccount ? "admin" : "user";
   }
 
-  const hashedPassword = await hashPassword(req.body.password);
+  const hashedPassword = await hashPassword(password);
   req.body.password = hashedPassword;
 
   const user = await User.create(req.body);
-  const message = user.role === "tutor" ? "Tutor registered successfully" : "User Created Successfully";
+
+  const message =
+    user.role === "tutor"
+      ? "Tutor registered successfully"
+      : "User Created Successfully";
+
   res.status(StatusCodes.CREATED).json({ msg: message });
 };
 
 // Login user/tutor and set JWT token in cookie
-
 export const login = async (req, res) => {
-  // Optionally filter by role if provided in request
-  const query = { email: req.body.email };
-  if (req.body.role) {
-    query.role = req.body.role;
+  const { email, password, role } = req.body || {};
+  if (!email || !password) {
+    throw new BadRequestError("Email and password are required");
   }
-  
-  const user = await User.findOne(query);
-  const isValidUser =
-    user && (await bcrypt.compare(req.body.password, user.password));
 
+  // Optionally filter by role if provided in request
+  const query = { email };
+  if (role) query.role = role;
+
+  const user = await User.findOne(query);
+  const isValidUser = user && (await bcrypt.compare(password, user.password));
   if (!isValidUser) throw new UnauthenticatedError("Invalid credentials");
 
   const oneday = 24 * 60 * 60 * 1000;
 
-  const token = createJWT({ userId: user._id, role: user.role });
+  // Keep both keys if you have middleware expecting either `id` or `userId`
+  const token = createJWT({ userId: user._id, id: user._id, role: user.role });
+
   res.cookie("token", token, {
     httpOnly: true,
     expires: new Date(Date.now() + oneday),
@@ -54,11 +65,13 @@ export const login = async (req, res) => {
   });
 
   const roleMessage = user.role === "tutor" ? "Tutor logged in" : "User logged in";
+
   res.status(StatusCodes.OK).json({
     msg: roleMessage,
+    token, // remove this if you ONLY want cookie-based auth
     user: {
       role: user.role,
-      name: user.fullName,
+      name: user.fullName || user.email,
       email: user.email,
     },
   });
