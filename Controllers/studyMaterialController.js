@@ -56,6 +56,14 @@ export const getAllStudyMaterials = async (req, res) => {
     filter.title = { $regex: keyword.trim(), $options: "i" };
   }
 
+  // --- sorting ---
+  const SORT_OPTIONS = {
+    latest:  { createdAt: -1 }, // newest first (default)
+    subject: { subject: 1 },    // alphabetical A → Z
+  };
+  const sortKey  = req.query.sort && SORT_OPTIONS[req.query.sort] ? req.query.sort : "latest";
+  const sortObj  = SORT_OPTIONS[sortKey];
+
   // --- pagination ---
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
@@ -66,7 +74,7 @@ export const getAllStudyMaterials = async (req, res) => {
     StudyMaterial.countDocuments(filter),
     StudyMaterial.find(filter)
       .populate("uploadedBy", "name email role")
-      .sort({ createdAt: -1 })
+      .sort(sortObj)
       .skip(skip)
       .limit(limit),
   ]);
