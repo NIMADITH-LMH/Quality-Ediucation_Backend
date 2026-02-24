@@ -1,6 +1,10 @@
+import dotenv from "dotenv";
+
+// Load environment variables FIRST before any other imports
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import connectDB from "./Config/db.js";
 import cookieParser from "cookie-parser";
 
@@ -14,7 +18,6 @@ import materialRouter from "./Routes/materialRouter.js";
 import messageRouter from "./Routes/messageRouter.js";
 import tutoringSessionRouter from "./Routes/tutoringSessionRouter.js";
 
-dotenv.config();
 const app = express();
 
 // Middleware
