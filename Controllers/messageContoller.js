@@ -5,8 +5,8 @@ import path from "path";
 import fs from "fs";
 import { createMessageWithTranslation } from "../services/messageService.js";
 
-//  * If message contains Sinhala characters (Unicode 0D80-0DFF), 
-//  * it will be automatically translated to English using Google Gemini API
+//If message contains Sinhala characters (Unicode 0D80-0DFF), 
+//it will be automatically translated to English using Google Gemini API
 
 export const createMessage = async (req, res) => {
   let uploadedFile = null;
