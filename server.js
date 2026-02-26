@@ -18,6 +18,7 @@ import tutorRouter from "./Routes/tutorRouter.js";
 // If you have these route files, uncomment the imports + app.use lines below
 import messageRouter from "./Routes/messageRouter.js";
 import tutoringSessionRouter from "./Routes/tutoringSessionRouter.js";
+import googleCalendarRouter from "./Routes/googleCalenderRouter.js";
 
 // Import Error Handler
 import { errorHandler } from "./Middleware/errorHandler.js";
@@ -39,6 +40,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/feedbacks", feedbackRouter);
 app.use("/api/progress", progressRouter);
 app.use("/api/materials", materialRouter);
+app.use("/api/google-calendar", googleCalendarRouter); // If you have this route file, uncomment the import + app.use line
 app.use("/api/tutors", tutorRouter);
 
 // Uncomment if these exist

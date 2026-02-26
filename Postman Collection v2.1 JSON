@@ -1,0 +1,129 @@
+{
+  "info": {
+    "name": "Peer Learning - Tutoring Sessions API",
+    "_postman_id": "b9f6c1a4-8d3e-4b22-9b2c-123456789abc",
+    "description": "Postman Collection for testing MERN Peer Learning / Tutoring Sessions backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1) User Registration",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test Tutor\",\n  \"email\": \"tutor@example.com\",\n  \"password\": \"Password123\",\n  \"role\": \"tutor\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/register",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "2) User Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"tutor@example.com\",\n  \"password\": \"Password123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/auth/login",
+          "host": ["{{base_url}}"],
+          "path": ["auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "3) Create Tutoring Session",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Math Revision Class\",\n  \"subject\": \"Mathematics\",\n  \"grade\": \"10\",\n  \"description\": \"Algebra basics session\",\n  \"date\": \"2026-03-01T10:00:00.000Z\",\n  \"duration\": 60,\n  \"capacity\": 5\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/sessions",
+          "host": ["{{base_url}}"],
+          "path": ["sessions"]
+        }
+      }
+    },
+    {
+      "name": "4) Get All Tutoring Sessions",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/sessions?subject=Mathematics&grade=10",
+          "host": ["{{base_url}}"],
+          "path": ["sessions"],
+          "query": [
+            { "key": "subject", "value": "Mathematics" },
+            { "key": "grade", "value": "10" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "5) Join Tutoring Session",
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "{{base_url}}/sessions/{{session_id}}/join",
+          "host": ["{{base_url}}"],
+          "path": ["sessions", "{{session_id}}", "join"]
+        }
+      }
+    },
+    {
+      "name": "6) Update Tutoring Session",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Updated Math Revision\",\n  \"duration\": 90\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/sessions/{{session_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["sessions", "{{session_id}}"]
+        }
+      }
+    },
+    {
+      "name": "7) Delete Tutoring Session",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "{{base_url}}/sessions/{{session_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["sessions", "{{session_id}}"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "session_id",
+      "value": ""
+    }
+  ]
+}

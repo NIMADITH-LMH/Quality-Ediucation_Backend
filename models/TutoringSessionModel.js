@@ -98,6 +98,10 @@ const tutoringSessionSchema = new mongoose.Schema(
       },
     },
 
+    googleEventId: {
+    type: String,
+    },
+
     participants: [
       {
         userId: {
@@ -310,7 +314,7 @@ tutoringSessionSchema.methods.addFeedback = async function (userId, rating, feed
 };
 
 // Pre-save middleware to calculate duration
-tutoringSessionSchema.pre("save", function (next) {
+tutoringSessionSchema.pre("save", async function () {
   if (this.schedule.startTime && this.schedule.endTime) {
     const [startHour, startMinute] = this.schedule.startTime.split(":").map(Number);
     const [endHour, endMinute] = this.schedule.endTime.split(":").map(Number);
@@ -326,8 +330,6 @@ tutoringSessionSchema.pre("save", function (next) {
 
     this.schedule.duration = duration;
   }
-
-  next();
 });
 
 export default mongoose.model("TutoringSession", tutoringSessionSchema);

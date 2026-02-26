@@ -1,0 +1,218 @@
+{
+  "info": {
+    "name": "Peer Learning - Tutoring Sessions CRUD API",
+    "_postman_id": "tutoring-sessions-crud",
+    "description": "Complete CRUD API for Tutoring Sessions with authentication",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Tutor",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Tutor\",\n  \"email\": \"tutor@test.com\",\n  \"password\": \"Pass123!\",\n  \"role\": \"tutor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Register Student",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Jane Student\",\n  \"email\": \"student@test.com\",\n  \"password\": \"Pass123!\",\n  \"role\": \"student\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tutor@test.com\",\n  \"password\": \"Pass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tutoring Sessions - CRUD",
+      "item": [
+        {
+          "name": "CREATE - New Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Algebra Fundamentals\",\n  \"subject\": \"mathematics\",\n  \"description\": \"Learn algebraic equations and problem solving\",\n  \"grade\": \"10\",\n  \"level\": \"intermediate\",\n  \"duration\": 60,\n  \"topic\": \"Quadratic Equations\",\n  \"schedule\": {\n    \"date\": \"2026-03-10T10:00:00.000Z\",\n    \"startTime\": \"10:00\",\n    \"endTime\": \"11:00\"\n  },\n  \"capacity\": {\n    \"maxParticipants\": 20\n  },\n  \"location\": {\n    \"type\": \"online\",\n    \"link\": \"https://zoom.us/meeting\"\n  },\n  \"tags\": [\"algebra\", \"equations\", \"math\"],\n  \"notes\": \"Bring calculator and notebook\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tutoring-sessions",
+              "host": ["{{base_url}}"],
+              "path": ["tutoring-sessions"]
+            }
+          }
+        },
+        {
+          "name": "READ - Get All Sessions (with filters)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/tutoring-sessions?subject=mathematics&grade=10&level=intermediate&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["tutoring-sessions"],
+              "query": [
+                { "key": "subject", "value": "mathematics" },
+                { "key": "grade", "value": "10" },
+                { "key": "level", "value": "intermediate" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "READ - Get Session By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/tutoring-sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tutoring-sessions", "{{session_id}}"]
+            }
+          }
+        },
+        {
+          "name": "READ - Get My Enrolled Sessions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/tutoring-sessions/my-enrolled",
+              "host": ["{{base_url}}"],
+              "path": ["tutoring-sessions", "my-enrolled"]
+            }
+          }
+        },
+        {
+          "name": "UPDATE - Session Details",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Advanced Algebra\",\n  \"description\": \"In-depth algebraic concepts\",\n  \"duration\": 90,\n  \"capacity\": {\n    \"maxParticipants\": 25\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/tutoring-sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tutoring-sessions", "{{session_id}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE - Session",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/tutoring-sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tutoring-sessions", "{{session_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Session Participation",
+      "item": [
+        {
+          "name": "JOIN - Student Joins Session",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/tutoring-sessions/{{session_id}}/join",
+              "host": ["{{base_url}}"],
+              "path": ["tutoring-sessions", "{{session_id}}", "join"]
+            }
+          }
+        },
+        {
+          "name": "LEAVE - Student Leaves Session",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/tutoring-sessions/{{session_id}}/leave",
+              "host": ["{{base_url}}"],
+              "path": ["tutoring-sessions", "{{session_id}}", "leave"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tutor Sessions",
+      "item": [
+        {
+          "name": "GET - All Sessions By Tutor",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/tutoring-sessions/tutor/{{tutor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tutoring-sessions", "tutor", "{{tutor_id}}"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "session_id",
+      "value": ""
+    },
+    {
+      "key": "tutor_id",
+      "value": ""
+    }
+  ]
+}
