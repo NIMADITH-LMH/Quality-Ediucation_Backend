@@ -3,7 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import { BadRequestError, NotFoundError } from "../errors/customErrors.js";
 import path from "path";
 import fs from "fs";
-import { createMessageWithTranslation } from "../services/messageService.js";
+import { createMessageWithTranslation, processMessageContent } from "../services/messageService.js";
 
 //If message contains Sinhala characters (Unicode 0D80-0DFF), 
 //it will be automatically translated to English using Google Gemini API
@@ -71,6 +71,8 @@ export const createMessage = async (req, res) => {
     });
   }
 };
+
+
 // Get all messages created by the logged-in user
 export const getAllMessages = async (req, res) => {
   try {
@@ -109,17 +111,41 @@ export const updateMessage = async (req, res) => {
       throw new BadRequestError("You are not authorized to update this message");
     }
 
-    const updatedMessage = await Message.findByIdAndUpdate(id, req.body, {
+    // Prepare update data
+    let updateData = { ...req.body };
+
+    // If message content is being updated, process it for translation
+    if (req.body.message) {
+      const { message: processedMessage, requiresTranslation } = await processMessageContent(req.body.message);
+      updateData.message = processedMessage;
+      updateData.requiresTranslation = requiresTranslation;
+    }
+
+    const updatedMessage = await Message.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
-    });
+    }).populate("createdBy", "fullName email role");
 
     res.status(StatusCodes.OK).json({
+      success: true,
       msg: "Message updated successfully",
       message: updatedMessage,
+      translationPerformed: updateData.requiresTranslation || false
     });
   } catch (error) {
+    // Handle specific error types
+    if (error instanceof BadRequestError || error instanceof NotFoundError) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: error.message
+      });
+    }
+
+    // Log error for monitoring
+    console.error("Update message error:", error.message);
+
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
       msg: "Failed to update message",
       error: error.message,
     });
