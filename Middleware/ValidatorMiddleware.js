@@ -19,6 +19,7 @@ const withValidationError = (validateValues) => {
   ];
 };
 
+
 // Middleware to handle validation Register input
 export const validateRegisterInput = withValidationError([
   body("fullName")
@@ -49,6 +50,24 @@ export const validateRegisterInput = withValidationError([
     .matches(/^[0-9]{10}$/)
     .withMessage("Please provide a valid 10-digit phone number"),
   body("location").notEmpty().withMessage("Location is required").trim(),
+  body("role")
+    .optional()
+    .isIn(["user", "admin", "organizer", "tutor"])
+    .withMessage("Invalid role"),
+  // Conditional validation for tutors - subjects are required
+  body("subjects")
+    .if(body("role").equals("tutor"))
+    .notEmpty()
+    .withMessage("Subjects are required for tutors")
+    .isArray({ min: 1 })
+    .withMessage("At least one subject is required for tutors"),
+  body("subjects.*")
+    .if(body("role").equals("tutor"))
+    .isString()
+    .withMessage("Each subject must be a string")
+    .isLength({ min: 2, max: 50 })
+    .withMessage("Each subject must be between 2 and 50 characters")
+    .trim(),
 ]);
 
 // Middleware to handle validation Login input

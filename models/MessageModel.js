@@ -32,20 +32,6 @@ const messageSchema = new mongoose.Schema({
     maxlength: [1000, "Message cannot exceed 1000 characters"]
   },
 
-  // Original message as provided by the user
-  originalMessage: {
-    type: String,
-    trim: true,
-    maxlength: [1000, "Original message cannot exceed 1000 characters"]
-  },
-
-  // Translated message (always in English)
-  translatedMessage: {
-    type: String,
-    trim: true,
-    maxlength: [1000, "Translated message cannot exceed 1000 characters"]
-  },
-
   // Flag to indicate if translation was performed
   requiresTranslation: {
     type: Boolean,

@@ -88,7 +88,7 @@ export const translateSinhalaToEnglish = async (text) => {
 /**
  * Process message content and handle translation if needed
  * @param {string} messageText - Original message text
- * @returns {Promise<{originalMessage: string, translatedMessage: string, requiresTranslation: boolean}>}
+ * @returns {Promise<{message: string, requiresTranslation: boolean}>}
  */
 export const processMessageContent = async (messageText) => {
   if (!messageText || typeof messageText !== 'string') {
@@ -97,23 +97,22 @@ export const processMessageContent = async (messageText) => {
 
   const hasSinhala = containsSinhalaCharacters(messageText);
   
-  let translatedMessage = messageText;
+  let finalMessage = messageText;
   
   // Only translate if Sinhala characters are detected
   if (hasSinhala) {
     try {
-      translatedMessage = await translateSinhalaToEnglish(messageText);
-      console.log("✅ Translation successful");
+      finalMessage = await translateSinhalaToEnglish(messageText);
+      console.log("✅ Translation successful - storing translated message only");
     } catch (error) {
       console.error("❌ Translation failed, storing original message:", error.message);
       // Store original message if translation fails - don't block message creation
-      translatedMessage = messageText;
+      finalMessage = messageText;
     }
   }
   
   return {
-    originalMessage: messageText,
-    translatedMessage: translatedMessage,
+    message: finalMessage,
     requiresTranslation: hasSinhala
   };
 };
@@ -133,15 +132,13 @@ export const createMessageWithTranslation = async (messageData, userData, fileDa
   }
 
   // Process message content (detect Sinhala and translate if needed)
-  const { originalMessage, translatedMessage, requiresTranslation } = await processMessageContent(message);
+  const { message: processedMessage, requiresTranslation } = await processMessageContent(message);
   
-  // Prepare the message object for database
+  // Prepare the message object for database - only store translated message
   const messagePayload = {
     ...messageData,
-    originalMessage,
-    translatedMessage,
+    message: processedMessage, // Store only the translated/final message
     requiresTranslation,
-    message: translatedMessage, // Store translated version as primary message
     createdBy: userData.userId
   };
 
