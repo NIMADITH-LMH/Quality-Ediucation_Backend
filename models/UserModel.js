@@ -43,6 +43,68 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: "uploads/default-avatar.png", // Default avatar path
     },
+    // Tutor-specific fields
+    tutorProfile: {
+      subjects: [{
+        type: String,
+        trim: true,
+        lowercase: true,
+      }],
+      bio: {
+        type: String,
+        trim: true,
+        maxlength: [500, "Bio cannot exceed 500 characters"],
+      },
+      experience: {
+        type: Number,
+        min: [0, "Experience cannot be negative"],
+        max: [50, "Experience cannot exceed 50 years"],
+      },
+      qualifications: [{
+        degree: String,
+        institution: String,
+        year: Number,
+      }],
+      specializations: [{
+        type: String,
+        trim: true,
+      }],
+      rating: {
+        average: {
+          type: Number,
+          default: 0,
+          min: 0,
+          max: 5,
+        },
+        count: {
+          type: Number,
+          default: 0,
+          min: 0,
+        },
+      },
+      hourlyRate: {
+        type: Number,
+        min: [0, "Hourly rate cannot be negative"],
+      },
+      availability: {
+        type: String,
+        enum: ["available", "busy", "unavailable"],
+        default: "available",
+      },
+      languages: [{
+        type: String,
+        trim: true,
+      }],
+      sessionCount: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      isVerified: {
+        type: Boolean,
+        default: false,
+      },
+    },
     resetPasswordToken: {
       type: String,
     },

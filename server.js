@@ -1,6 +1,10 @@
+import dotenv from "dotenv";
+
+// Load environment variables FIRST before any other imports
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import connectDB from "./Config/db.js";
 import cookieParser from "cookie-parser";
 
@@ -9,13 +13,16 @@ import authRouter from "./Routes/authRouter.js";
 import feedbackRouter from "./Routes/feedbackRouter.js";
 import progressRouter from "./Routes/progressRouter.js";
 import materialRouter from "./Routes/materialRouter.js";
+import tutorRouter from "./Routes/tutorRouter.js";
 
 // If you have these route files, uncomment the imports + app.use lines below
 import messageRouter from "./Routes/messageRouter.js";
 import tutoringSessionRouter from "./Routes/tutoringSessionRouter.js";
 import googleCalendarRouter from "./Routes/googleCalenderRouter.js";
 
-dotenv.config();
+// Import Error Handler
+import { errorHandler } from "./Middleware/errorHandler.js";
+
 const app = express();
 
 // Middleware
@@ -34,10 +41,23 @@ app.use("/api/feedbacks", feedbackRouter);
 app.use("/api/progress", progressRouter);
 app.use("/api/materials", materialRouter);
 app.use("/api/google-calendar", googleCalendarRouter); // If you have this route file, uncomment the import + app.use line
+app.use("/api/tutors", tutorRouter);
 
 // Uncomment if these exist
 app.use("/api/messages", messageRouter);
 app.use("/api/tutoring-sessions", tutoringSessionRouter);
+
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Error Handler Middleware (MUST be last!)
+app.use(errorHandler);
 
 // Port
 const PORT = process.env.PORT || 5000;

@@ -11,7 +11,7 @@ import {
 
 // Register a new user or tutor
 export const register = async (req, res) => {
-  const { email, password, role } = req.body || {};
+  const { email, password, role, subjects } = req.body || {};
   if (!email || !password) {
     throw new BadRequestError("Email and password are required");
   }
@@ -21,6 +21,23 @@ export const register = async (req, res) => {
   // If role is provided and is "tutor", use it; otherwise apply default logic
   if (role === "tutor") {
     req.body.role = "tutor";
+    
+    // Validate subjects for tutors (additional check)
+    if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
+      throw new BadRequestError("Subjects are required for tutor registration");
+    }
+    
+    // Initialize tutorProfile with subjects
+    req.body.tutorProfile = {
+      subjects: subjects.map(s => s.toLowerCase()),
+      availability: "available",
+      sessionCount: 0,
+      rating: {
+        average: 0,
+        count: 0,
+      },
+      isVerified: false,
+    };
   } else {
     req.body.role = isFirstAccount ? "admin" : "user";
   }

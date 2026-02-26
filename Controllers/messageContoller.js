@@ -3,33 +3,75 @@ import { StatusCodes } from "http-status-codes";
 import { BadRequestError, NotFoundError } from "../errors/customErrors.js";
 import path from "path";
 import fs from "fs";
+import { createMessageWithTranslation, processMessageContent } from "../services/messageService.js";
 
-// Create a new message with optional image upload
+//If message contains Sinhala characters (Unicode 0D80-0DFF), 
+//it will be automatically translated to English using Google Gemini API
+
 export const createMessage = async (req, res) => {
+  let uploadedFile = null;
+
   try {
-    // Attach the logged-in user's ID
-    req.body.createdBy = req.user.userId;
-    
-    if (req.file) {
-      req.body.image = path.join("uploads", req.file.filename);
+    // Validate required fields
+      const { message } = req.body || {};
+
+    if (!message) {
+      throw new BadRequestError("message is required");
     }
 
-    const message = await Message.create(req.body);
+    // Track uploaded file for cleanup on error
+    uploadedFile = req.file;
+
+    // Process message with translation service
+    const messagePayload = await createMessageWithTranslation(
+      req.body,
+      { userId: req.user.userId },
+      req.file
+    );
+
+    const createdMessage = await Message.create(messagePayload);
+
+    // Populate creator details
+    const populatedMessage = await Message.findById(createdMessage._id)
+      .populate("createdBy", "fullName email role");
+
     res.status(StatusCodes.CREATED).json({
+      success: true,
       msg: "Message created successfully",
-      message,
+      message: populatedMessage,
+      translationPerformed: createdMessage.requiresTranslation
     });
-  } catch (error) {
 
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
+  } catch (error) {
+    // Cleanup uploaded file on error
+    if (uploadedFile) {
+      try {
+        fs.unlinkSync(uploadedFile.path);
+        console.log(`Cleaned up file: ${uploadedFile.filename}`);
+      } catch (unlinkError) {
+        console.error("Failed to cleanup uploaded file:", unlinkError.message);
+      }
     }
+
+    // Handle specific error types
+    if (error instanceof BadRequestError) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: error.message
+      });
+    }
+
+    // Log error for monitoring
+    console.error("Create message error:", error.message);
+
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
       msg: "Failed to create message",
-      error: error.message,
+      error: error.message
     });
   }
 };
+
 
 // Get all messages created by the logged-in user
 export const getAllMessages = async (req, res) => {
@@ -69,17 +111,41 @@ export const updateMessage = async (req, res) => {
       throw new BadRequestError("You are not authorized to update this message");
     }
 
-    const updatedMessage = await Message.findByIdAndUpdate(id, req.body, {
+    // Prepare update data
+    let updateData = { ...req.body };
+
+    // If message content is being updated, process it for translation
+    if (req.body.message) {
+      const { message: processedMessage, requiresTranslation } = await processMessageContent(req.body.message);
+      updateData.message = processedMessage;
+      updateData.requiresTranslation = requiresTranslation;
+    }
+
+    const updatedMessage = await Message.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
-    });
+    }).populate("createdBy", "fullName email role");
 
     res.status(StatusCodes.OK).json({
+      success: true,
       msg: "Message updated successfully",
       message: updatedMessage,
+      translationPerformed: updateData.requiresTranslation || false
     });
   } catch (error) {
+    // Handle specific error types
+    if (error instanceof BadRequestError || error instanceof NotFoundError) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: error.message
+      });
+    }
+
+    // Log error for monitoring
+    console.error("Update message error:", error.message);
+
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
       msg: "Failed to update message",
       error: error.message,
     });
@@ -104,7 +170,8 @@ export const deleteMessage = async (req, res) => {
     }
 
     await Message.findByIdAndDelete(id);
-
+    //databse queries take a time to execute
+    //without wait code would continue immediately without waiting for the results
     res.status(StatusCodes.OK).json({ msg: "Message deleted successfully" });
   } catch (error) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({

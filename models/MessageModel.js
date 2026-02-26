@@ -32,6 +32,19 @@ const messageSchema = new mongoose.Schema({
     maxlength: [1000, "Message cannot exceed 1000 characters"]
   },
 
+  // Flag to indicate if translation was performed
+  requiresTranslation: {
+    type: Boolean,
+    default: false
+  },
+
+  // Sender ID (for external sender identification)
+  senderId: {
+    type: String,
+    trim: true,
+    maxlength: [100, "Sender ID cannot exceed 100 characters"]
+  },
+
   image: {
     type: String,
     default: null,

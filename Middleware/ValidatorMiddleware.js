@@ -1,5 +1,6 @@
 
 import User from "../models/UserModel.js";
+import Message from "../models/MessageModel.js";
 import { body, param, validationResult } from "express-validator";
 import { BadRequestError } from "../errors/customErrors.js";
 
@@ -17,6 +18,7 @@ const withValidationError = (validateValues) => {
     },
   ];
 };
+
 
 // Middleware to handle validation Register input
 export const validateRegisterInput = withValidationError([
@@ -48,6 +50,24 @@ export const validateRegisterInput = withValidationError([
     .matches(/^[0-9]{10}$/)
     .withMessage("Please provide a valid 10-digit phone number"),
   body("location").notEmpty().withMessage("Location is required").trim(),
+  body("role")
+    .optional()
+    .isIn(["user", "admin", "organizer", "tutor"])
+    .withMessage("Invalid role"),
+  // Conditional validation for tutors - subjects are required
+  body("subjects")
+    .if(body("role").equals("tutor"))
+    .notEmpty()
+    .withMessage("Subjects are required for tutors")
+    .isArray({ min: 1 })
+    .withMessage("At least one subject is required for tutors"),
+  body("subjects.*")
+    .if(body("role").equals("tutor"))
+    .isString()
+    .withMessage("Each subject must be a string")
+    .isLength({ min: 2, max: 50 })
+    .withMessage("Each subject must be between 2 and 50 characters")
+    .trim(),
 ]);
 
 // Middleware to handle validation Login input
@@ -58,4 +78,34 @@ export const validateLoginInput = withValidationError([
     .isEmail()
     .withMessage("Invalid email format"),
   body("password").notEmpty().withMessage("Password is required"),
+]);
+
+// Middleware to handle Message validation
+export const validateMessageInput = withValidationError([
+  body("name")
+    .notEmpty()
+    .withMessage("Name is required")
+    .isLength({ min: 2, max: 50 })
+    .withMessage("Name must be between 2 and 50 characters")
+    .trim(),
+  body("subject")
+    .notEmpty()
+    .withMessage("Subject is required")
+    .isLength({ min: 3, max: 100 })
+    .withMessage("Subject must be between 3 and 100 characters")
+    .trim(),
+  body("message")
+    .notEmpty()
+    .withMessage("Message is required")
+    .isLength({ min: 10, max: 1000 })
+    .withMessage("Message must be between 10 and 1000 characters")
+    .trim(),
+  body("image")
+    .optional()
+    .custom((value) => {
+      if (value && !/^(https?:\/\/.*|uploads\/.*\.(jpg|jpeg|png|gif|webp))$/i.test(value)) {
+        throw new Error("Please provide a valid image URL or path");
+      }
+      return true;
+    }),
 ]);
