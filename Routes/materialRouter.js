@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createStudyMaterial, getAllStudyMaterials, getSingleStudyMaterial, updateStudyMaterial, deleteStudyMaterial } from "../Controllers/studyMaterialController.js";
 import { protect, authorizePermissions } from "../Middleware/authMiddleware.js";
+import { validateStudyMaterialInput, validateStudyMaterialUpdate } from "../Middleware/studyMaterialValidation.js";
 
 const router = Router();
 
@@ -11,7 +12,7 @@ router.get("/", protect, getAllStudyMaterials);
 router.get("/:id", protect, getSingleStudyMaterial);
 
 // PATCH /api/materials/:id — uploader or admin only
-router.patch("/:id", protect, updateStudyMaterial);
+router.patch("/:id", protect, validateStudyMaterialUpdate, updateStudyMaterial);
 
 // DELETE /api/materials/:id — uploader or admin only
 router.delete("/:id", protect, deleteStudyMaterial);
@@ -21,6 +22,7 @@ router.post(
   "/",
   protect,
   authorizePermissions("tutor", "admin"),
+  validateStudyMaterialInput,
   createStudyMaterial,
 );
 

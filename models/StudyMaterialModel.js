@@ -60,5 +60,7 @@ const studyMaterialSchema = new mongoose.Schema(
 // index subject and grade to speed up filtering queries
 studyMaterialSchema.index({ subject: 1 });
 studyMaterialSchema.index({ grade: 1 });
+// Index title and description for text searches
+studyMaterialSchema.index({ title: "text", description: "text" });
 
 export default mongoose.model("StudyMaterial", studyMaterialSchema);
