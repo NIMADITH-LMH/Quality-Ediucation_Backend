@@ -1,5 +1,25 @@
 import StudyMaterial from "../Models/StudyMaterialModel.js";
 import { NotFoundError, UnauthorizedError, BadRequestError } from "../errors/customErrors.js";
+import { cloudinary } from "../Middleware/uploadMiddleware.js";
+
+/**
+ * Extract public_id from a Cloudinary URL.
+ * Example URL: https://res.cloudinary.com/xxx/image/upload/v123/study_materials/abc123.pdf
+ * Returns: "study_materials/abc123"
+ */
+const extractPublicId = (url) => {
+  if (!url || !url.includes("cloudinary.com")) return null;
+  try {
+    const parts = url.split("/upload/");
+    if (parts.length < 2) return null;
+    // Remove version prefix (v123456789/) and file extension
+    const pathAfterUpload = parts[1].replace(/^v\d+\//, "");
+    const publicId = pathAfterUpload.replace(/\.[^/.]+$/, "");
+    return publicId;
+  } catch {
+    return null;
+  }
+};
 
 export const createMaterial = async (data, uploaderId) => {
   const materialData = {
@@ -76,6 +96,18 @@ export const updateMaterial = async (id, updates, user) => {
     throw new UnauthorizedError("You are not authorized to update this material");
   }
 
+  // If a new file is being uploaded, delete the old one from Cloudinary
+  if (updates.fileUrl && material.fileUrl) {
+    const oldPublicId = extractPublicId(material.fileUrl);
+    if (oldPublicId) {
+      try {
+        await cloudinary.uploader.destroy(oldPublicId, { resource_type: "raw" });
+      } catch (err) {
+        console.error("Cloudinary old-file deletion error:", err.message);
+      }
+    }
+  }
+
   const filteredUpdates = { ...updates };
   if (filteredUpdates.subject) filteredUpdates.subject = filteredUpdates.subject.trim().toLowerCase();
   if (filteredUpdates.tags && Array.isArray(filteredUpdates.tags)) {
@@ -103,8 +135,17 @@ export const deleteMaterial = async (id, user) => {
     throw new UnauthorizedError("You are not authorized to delete this material");
   }
 
-  // If cloudinary was configured here, you would delete the file from cloudinary first using material.fileUrl
+  // Delete file from Cloudinary before removing the DB document
+  const publicId = extractPublicId(material.fileUrl);
+  if (publicId) {
+    try {
+      await cloudinary.uploader.destroy(publicId, { resource_type: "raw" });
+    } catch (err) {
+      console.error("Cloudinary deletion error:", err.message);
+    }
+  }
 
   await StudyMaterial.findByIdAndDelete(id);
   return material;
 };
+

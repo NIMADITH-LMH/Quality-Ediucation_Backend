@@ -40,7 +40,7 @@ export const validateStudyMaterialInput = withValidationErrors([
     .isString()
     .isLength({ max: 20 })
     .withMessage("Grade cannot exceed 20 characters"),
-  body("fileUrl").notEmpty().withMessage("File URL is required").isURL().withMessage("Must be a valid URL"),
+  // fileUrl is NOT validated here — it comes from Multer/Cloudinary via req.file
   body("tags").optional().isArray().withMessage("Tags must be an array"),
 ]);
 
@@ -65,6 +65,6 @@ export const validateStudyMaterialUpdate = withValidationErrors([
     .isString()
     .isLength({ max: 20 })
     .withMessage("Grade cannot exceed 20 characters"),
-  body("fileUrl").optional().isURL().withMessage("Must be a valid URL"),
+  // fileUrl comes from Multer/Cloudinary via req.file, not body
   body("tags").optional().isArray().withMessage("Tags must be an array"),
 ]);

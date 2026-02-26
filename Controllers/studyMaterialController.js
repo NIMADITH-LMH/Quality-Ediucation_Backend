@@ -1,17 +1,26 @@
 import { StatusCodes } from "http-status-codes";
+import { BadRequestError } from "../errors/customErrors.js";
 import * as studyMaterialService from "../Services/studyMaterialService.js";
 
 // POST /api/materials
 // Only tutors and admins may upload
 export const createStudyMaterial = async (req, res) => {
+  if (!req.file) {
+    throw new BadRequestError("Please upload a file (PDF, DOC, image, etc.)");
+  }
+
   const uploaderId = req.user.userId || req.user._id;
-  
-  const material = await studyMaterialService.createMaterial(req.body, uploaderId);
-  
-  res.status(StatusCodes.CREATED).json({ 
-    success: true, 
-    msg: "Study material uploaded", 
-    data: material 
+  const materialData = {
+    ...req.body,
+    fileUrl: req.file.path, // Cloudinary secure URL
+  };
+
+  const material = await studyMaterialService.createMaterial(materialData, uploaderId);
+
+  res.status(StatusCodes.CREATED).json({
+    success: true,
+    msg: "Study material uploaded",
+    data: material,
   });
 };
 
@@ -20,9 +29,9 @@ export const createStudyMaterial = async (req, res) => {
 export const getAllStudyMaterials = async (req, res) => {
   const result = await studyMaterialService.getAllMaterials(req.query);
 
-  res.status(StatusCodes.OK).json({ 
-    success: true, 
-    ...result 
+  res.status(StatusCodes.OK).json({
+    success: true,
+    ...result,
   });
 };
 
@@ -31,21 +40,28 @@ export const getAllStudyMaterials = async (req, res) => {
 export const getSingleStudyMaterial = async (req, res) => {
   const material = await studyMaterialService.getMaterialById(req.params.id);
 
-  res.status(StatusCodes.OK).json({ 
-    success: true, 
-    data: material 
+  res.status(StatusCodes.OK).json({
+    success: true,
+    data: material,
   });
 };
 
 // PATCH /api/materials/:id
 // Only the original uploader OR an admin may update
 export const updateStudyMaterial = async (req, res) => {
-  const updatedMaterial = await studyMaterialService.updateMaterial(req.params.id, req.body, req.user);
+  const updates = { ...req.body };
 
-  res.status(StatusCodes.OK).json({ 
-    success: true, 
-    msg: "Study material updated", 
-    data: updatedMaterial 
+  // If a new file was uploaded, replace the URL
+  if (req.file) {
+    updates.fileUrl = req.file.path;
+  }
+
+  const updatedMaterial = await studyMaterialService.updateMaterial(req.params.id, updates, req.user);
+
+  res.status(StatusCodes.OK).json({
+    success: true,
+    msg: "Study material updated",
+    data: updatedMaterial,
   });
 };
 
@@ -54,8 +70,9 @@ export const updateStudyMaterial = async (req, res) => {
 export const deleteStudyMaterial = async (req, res) => {
   await studyMaterialService.deleteMaterial(req.params.id, req.user);
 
-  res.status(StatusCodes.OK).json({ 
-    success: true, 
-    msg: "Study material deleted successfully" 
+  res.status(StatusCodes.OK).json({
+    success: true,
+    msg: "Study material deleted successfully",
   });
 };
+
